@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Mike Robbins Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css"/>
+    <style>
+    	html { height:100%;}
+    	body {
+        	height:100%;
+        	padding: 0;
+        	margin: 0;
+    	}
+
+    	#map {
+        	width: 100%;
+        	margin: 0 auto;
+        	height: 70%;
+    	}
+        
+        /* ScrollBar
+        /* width */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        /* Track */
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+ 
+        /* Handle */
+        ::-webkit-scrollbar-thumb {
+            background: #888; 
+        }
+
+        /* Handle on hover */
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555; 
+        }
+    </style>
+</head>
+<body>
+    <font size="20" color="blue"><center>Philadelphia</center></font>
+    <font size="3" color="blue"><center>Bus Line 25</center></font>
+    <!-- Our web map and content will go here -->
+    <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <div id="map" style="width: 1000px; height: 600px">
+
+    </div>
+    <script>
+        function setColorFunc(density){
+        // Set function for color ramp, you can use a better palette
+            return density > 15 ? '#80005c' :
+            density > 10 ? '#c75aa8' :
+            density > 5 ? '#c7a1bc' :
+            density > 0 ? '#bdb1b9' :
+                         '#BFBCBB';
+        };
+
+        function styleFunc(feature) {
+        // Set style function that sets fill color property equal to blood lead
+            return {
+                fillColor: setColorFunc(feature.properties.num_bll_5p),
+                fillOpacity: 0.8    ,
+                weight: 2,
+                opacity: 1,
+                color: '#ffffff',
+                dashArray: '3'
+            };
+
+        }
+
+        function highlightFeature(e){
+        // highights census blocks
+            var layer = e.target;
+            layer.setStyle({
+                weight: 7,
+                color: '#141314',
+                dashArray: '',
+                fillOpacity: 0.8
+            });
+            // for different web browsers
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                layer.bringToFront();
+            }
+        }
+
+        function resetHighlight(e) {
+        // Define what happens on mouseout:
+            neighborhoodsLayer.resetStyle(e.target).bringToBack();
+        }
+ 
+        function zoomFeature(e){
+        // As an additional touch, let’s define a click listener that zooms to the state:
+            console.log(e.target.getBounds());
+            map.fitBounds(e.target.getBounds().pad(1.5));
+        }
+
+        function onEachFeatureFunc(feature, layer){
+        // add the listeners on our state layers:
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight,
+                click: zoomFeature
+            });
+            layer.bindPopup('Blood lead level: '+feature.properties.num_bll_5p);
+        }
+
+        function onMapClick(e) {
+        // function to set Properties of the Popup
+            popup
+                .setLatLng(e.latlng)
+                .setContent(e.latlng.toString())
+                .openOn(map);
+        }
+
+        // map instance
+        var map = L.map('map', {center: [39.97324, -75.13267], zoom: 14});
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        map.doubleClickZoom.disable();
+
+        // load GeoJSON from an external file
+        var neighborhoodsLayer = null;
+        $.getJSON("blood_lead.geojson",function(data){
+            // add GeoJSON layer to the map once the file is loaded
+            neighborhoodsLayer = L.geoJson(data, {
+                style: styleFunc,
+                onEachFeature: onEachFeatureFunc
+            }).addTo(map).bringToBack();
+        });
+
+        // Add Scale Bar to Map
+        L.control.scale({position: 'bottomleft'}).addTo(map);
+
+        // Create Leaflet Control Object for Legend
+        var legend = L.control({position: 'bottomright'});
+
+        // Function that runs when legend is added to map
+        legend.onAdd = function (map) {
+            // Create Div Element and Populate it with HTML
+            var div = L.DomUtil.create('div', 'legend');            
+            div.innerHTML += '<b>Blood lead level</b><br />';
+            div.innerHTML += 'by census tract<br />';
+            div.innerHTML += '<br>';
+            div.innerHTML += '<i style="background: #80005c"></i><p>30+</p>';
+            div.innerHTML += '<i style="background: #c75aa8"></i><p>17-30</p>';
+            div.innerHTML += '<i style="background: #c7a1bc"></i><p>8-17</p>';
+            div.innerHTML += '<i style="background: #bdb1b9"></i><p>0-8</p>';
+            div.innerHTML += '<hr>';
+            div.innerHTML += '<i style="background: #BFBCBB"></i><p>No Data</p>';
+
+            // Return the Legend div containing the HTML content
+            return div;
+        };
+
+        // Add Legend to Map
+        legend.addTo(map);
+
+        // Bus Stop Coordinates
+        var coordinates = [
+            [39.980356, -75.123278],
+            [39.979137, -75.125606],
+            [39.977545, -75.128629],
+            [39.974492, -75.130379],
+            [39.975307, -75.132684],
+            [39.972361, -75.134381],
+            [39.968934, -75.134427],
+            [39.964633, -75.134392],
+            [39.962647, -75.136425],
+            [39.960244, -75.137286],
+            [39.958981, -75.137786]];
+
+        // Bus Stop Names
+        var busStops = ['Memphis and Cumberland', 'Memphis and York', 'Memphis and Norris', 'Memphis and Palmer', 'Frankford and Palmer',
+                        'Frankford and Belgrade', 'Frankford and Girard', 'Frankford and Delaware', 'Delaware and Poplar',
+                        'Delaware and Spring Garden', 'Delaware and Noble'];
+
+        // add bus stop marker and bind pop
+        var i;
+        for (i = 0; i < coordinates.length; i++) {
+            var myDataPoint = L.marker(coordinates[i]).addTo(map);
+            myDataPoint.bindPopup(busStops[i]);
+        }
+
+        // create a polyline and bind pop
+        var busLine = L.polyline(coordinates, {color: 'red', weight: 5}).addTo(map).bringToFront();
+            busLine.bindPopup("25 Bus Line");
+
+        // Create an Empty Popup
+        var popup = L.popup();
+        map.on('click', onMapClick);
+    </script>
+</body>
+</html>
